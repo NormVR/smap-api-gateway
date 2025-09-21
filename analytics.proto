@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package analytics;
+
+option go_package = "github.com/smap-project/analytics-services/pkg/grpc";
+
+service AnalyticsService {
+  rpc GetUserStats(UserStatsRequest) returns (UserStatsResponse);
+  rpc GetPlatformStats(PlatformStatsRequest) returns (PlatformStatsResponse);
+}
+
+message UserStatsRequest {
+  string user_id = 1;
+  string period = 2;
+  repeated string metrics = 3;
+}
+
+message UserStatsResponse {
+  int64 posts_count = 1;
+  int64 likes_received = 2;
+  int64 followers_growth = 3;
+}
