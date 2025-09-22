@@ -3,7 +3,6 @@ package services
 import (
 	"api-gateway/internal/grpc/auth"
 	model "api-gateway/internal/models/auth"
-	"fmt"
 	"log"
 )
 
@@ -19,10 +18,8 @@ func NewUserService() *UserService {
 
 func (s *UserService) RegisterUser(userData *model.UserData) error {
 	id, err := s.grpcClient.CreateUser(userData)
-	defer s.grpcClient.Close()
 	if err != nil {
-		// TODO: process AlreadyExist scenario
-		return fmt.Errorf("register error: %s", err)
+		return err
 	}
 
 	log.Printf("Created user with id %d", id)
@@ -31,11 +28,9 @@ func (s *UserService) RegisterUser(userData *model.UserData) error {
 
 func (s *UserService) LoginUser(loginData *model.LoginData) (map[string]string, error) {
 	token, err := s.grpcClient.Login(loginData)
-	defer s.grpcClient.Close()
 
 	if err != nil {
-		// TODO: process Wrong username or password scenario
-		return nil, fmt.Errorf("login error: %s", err)
+		return nil, err
 	}
 
 	result := map[string]string{

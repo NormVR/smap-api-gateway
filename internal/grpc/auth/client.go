@@ -6,10 +6,9 @@ import (
 	"log"
 	"time"
 
+	user_service "github.com/NormVR/smap_protobuf/gen"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-
-	user_service "github.com/NormVR/smap_protobuf/gen"
 )
 
 type GrpcClient struct {
@@ -18,7 +17,8 @@ type GrpcClient struct {
 }
 
 func New() *GrpcClient {
-	conn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// TODO: get address from config
+	conn, err := grpc.NewClient("auth-service:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -30,7 +30,6 @@ func New() *GrpcClient {
 }
 
 func (c *GrpcClient) CreateUser(data *auth.UserData) (int64, error) {
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
@@ -43,11 +42,9 @@ func (c *GrpcClient) CreateUser(data *auth.UserData) (int64, error) {
 	})
 
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
 		return 0, err
 	}
 
-	log.Println(user.UserId)
 	return user.UserId, nil
 
 }
@@ -62,9 +59,9 @@ func (c *GrpcClient) Login(data *auth.LoginData) (string, error) {
 	})
 
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
 		return "", err
 	}
+
 	return response.JwtToken, nil
 }
 
