@@ -6,6 +6,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type HttpServer struct {
@@ -21,6 +22,8 @@ func NewHttpServer() *HttpServer {
 
 	publicRouter.HandleFunc("POST /auth/register", userHandler.Register)
 	publicRouter.HandleFunc("POST /auth/login", userHandler.Login)
+
+	protectedRouter.HandleFunc("POST /api/test", userHandler.Test)
 
 	mainRouter := http.NewServeMux()
 	mainRouter.Handle("/auth/", publicRouter)
@@ -57,7 +60,30 @@ func (s *HttpServer) StopServer(ctx context.Context) {
 
 func authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s %s %s", r.Method, r.URL.Path, r.RemoteAddr)
+		tokenString := r.Header.Get("Authorization")
+		tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
+		if tokenString == "" {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
+		userService := services.NewUserService()
+		userId, err := userService.ValidateToken(tokenString)
+
+		if err != nil {
+			log.Printf("Error validating token: %v\n", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		if userId == 0 {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), "user_id", userId)
+		r = r.WithContext(ctx)
+
 		next.ServeHTTP(w, r)
 	})
 }

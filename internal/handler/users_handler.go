@@ -107,3 +107,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(result)
 }
+
+func (h *UserHandler) Test(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusCreated)
+}
