@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -58,11 +59,8 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		case codes.AlreadyExists:
 			http.Error(w, st.Message(), http.StatusConflict)
 			return
-		case codes.Internal:
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-			return
 		default:
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusInternalServerError)
 			return
 		}
 	}
@@ -100,7 +98,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, st.Message(), http.StatusUnauthorized)
 			return
 		case codes.Internal:
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusInternalServerError)
 			return
 		}
 	}
@@ -108,6 +106,27 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
-func (h *UserHandler) Test(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusCreated)
+func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	defer r.Body.Close()
+
+	tokenString := r.Header.Get("Authorization")
+	tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
+	if tokenString == "" {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	err := h.service.Logout(tokenString)
+
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

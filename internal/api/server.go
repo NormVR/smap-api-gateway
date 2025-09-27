@@ -7,6 +7,9 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type HttpServer struct {
@@ -22,8 +25,7 @@ func NewHttpServer() *HttpServer {
 
 	publicRouter.HandleFunc("POST /auth/register", userHandler.Register)
 	publicRouter.HandleFunc("POST /auth/login", userHandler.Login)
-
-	protectedRouter.HandleFunc("POST /api/test", userHandler.Test)
+	publicRouter.HandleFunc("POST /auth/logout", userHandler.Logout)
 
 	mainRouter := http.NewServeMux()
 	mainRouter.Handle("/auth/", publicRouter)
@@ -72,8 +74,25 @@ func authMiddleware(next http.Handler) http.Handler {
 
 		if err != nil {
 			log.Printf("Error validating token: %v\n", err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
+
+			st, ok := status.FromError(err)
+
+			if !ok {
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusInternalServerError)
+				return
+			}
+
+			switch st.Code() {
+			case codes.InvalidArgument:
+				http.Error(w, st.Message(), http.StatusBadRequest)
+				return
+			case codes.Unauthenticated:
+				http.Error(w, st.Message(), http.StatusUnauthorized)
+				return
+			default:
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusInternalServerError)
+				return
+			}
 		}
 
 		if userId == 0 {

@@ -24,7 +24,7 @@ func NewRedisRepository() *RedisRepository {
 
 func (s *RedisRepository) GetUserId(token string) (int64, error) {
 	ctx := context.Background()
-	userId, err := s.client.Get(ctx, "token: "+token).Int64()
+	userId, err := s.client.Get(ctx, token).Int64()
 
 	if err != nil {
 		if errors.Is(err, redis.Nil) {

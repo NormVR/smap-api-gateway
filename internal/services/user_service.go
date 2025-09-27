@@ -43,6 +43,16 @@ func (s *UserService) LoginUser(loginData *model.LoginData) (map[string]string, 
 	return result, nil
 }
 
+func (s *UserService) Logout(tokenString string) error {
+	err := s.grpcClient.Logout(tokenString)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	return nil
+}
+
 func (s *UserService) ValidateToken(token string) (int64, error) {
 	userId, err := s.redisRepo.GetUserId(token)
 

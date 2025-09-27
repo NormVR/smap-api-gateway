@@ -80,6 +80,19 @@ func (c *GrpcClient) ValidateToken(token string) (int64, error) {
 	return response.UserId, nil
 }
 
+func (c *GrpcClient) Logout(token string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	_, err := c.client.Logout(ctx, &user_service.TokenRequest{
+		JwtToken: token,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c *GrpcClient) Close() {
 	if c.conn != nil {
 		c.conn.Close()
