@@ -54,7 +54,7 @@ func (s *UserService) Logout(tokenString string) error {
 }
 
 func (s *UserService) ValidateToken(token string) (int64, error) {
-	userId, err := s.redisRepo.GetUserId(token)
+	userId, err := s.redisRepo.GetUserId("token:" + token)
 
 	if err != nil {
 		log.Printf(err.Error())
