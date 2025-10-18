@@ -2,6 +2,7 @@ package services
 
 import (
 	"api-gateway/internal/grpc/auth"
+	userModel "api-gateway/internal/models"
 	model "api-gateway/internal/models/auth"
 	"api-gateway/internal/repository/redis"
 	"log"
@@ -19,7 +20,7 @@ func NewUserService() *UserService {
 	}
 }
 
-func (s *UserService) RegisterUser(userData *model.UserData) error {
+func (s *UserService) RegisterUser(userData *model.RegisterData) error {
 	id, err := s.grpcClient.CreateUser(userData)
 	if err != nil {
 		return err
@@ -72,4 +73,14 @@ func (s *UserService) ValidateToken(token string) (int64, error) {
 	}
 
 	return userId, nil
+}
+
+func (s *UserService) GetUser(userId int64) (*userModel.User, error) {
+	user, err := s.grpcClient.GetUser(userId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }

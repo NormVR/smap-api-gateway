@@ -1,6 +1,6 @@
 package auth
 
-type UserData struct {
+type RegisterData struct {
 	Email     string `json:"email"`
 	Username  string `json:"username"`
 	Firstname string `json:"firstname"`

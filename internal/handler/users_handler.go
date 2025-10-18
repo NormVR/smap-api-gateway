@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"google.golang.org/grpc/codes"
@@ -26,7 +27,7 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userData := auth.UserData{}
+	userData := auth.RegisterData{}
 
 	err := json.NewDecoder(r.Body).Decode(&userData)
 
@@ -129,4 +130,43 @@ func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	defer r.Body.Close()
+
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	if len(parts) < 4 {
+		http.Error(w, "incorrect URL", http.StatusBadRequest)
+		return
+	}
+
+	id, err := strconv.Atoi(parts[3])
+
+	if err != nil {
+		http.Error(w, "incorrect URL", http.StatusBadRequest)
+		return
+	}
+
+	user, err := h.service.GetUser(int64(id))
+
+	if err != nil {
+		log.Printf("failed to get user: %v", err)
+		st, ok := status.FromError(err)
+		if !ok {
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		http.Error(w, st.Message(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(user)
 }

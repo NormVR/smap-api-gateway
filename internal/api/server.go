@@ -27,6 +27,11 @@ func NewHttpServer() *HttpServer {
 	publicRouter.HandleFunc("POST /auth/login", userHandler.Login)
 	publicRouter.HandleFunc("POST /auth/logout", userHandler.Logout)
 
+	protectedRouter.HandleFunc("GET /api/users/{id}", userHandler.GetUser)
+	//protectedRouter.HandleFunc("PUT /api/users/{id}", userHandler.UpdateUser)
+	//protectedRouter.HandleFunc("POST /api/users/{id}/follow{follower_id}", userHandler.Follow)
+	//protectedRouter.HandleFunc("GET /api/users/search", userHandler.Search)
+
 	mainRouter := http.NewServeMux()
 	mainRouter.Handle("/auth/", publicRouter)
 	mainRouter.Handle("/api/", authMiddleware(protectedRouter))
