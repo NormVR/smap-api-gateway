@@ -164,8 +164,18 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
-		http.Error(w, st.Message(), http.StatusInternalServerError)
-		return
+
+		switch st.Code() {
+		case codes.NotFound:
+			http.Error(w, st.Message(), http.StatusNotFound)
+			return
+		case codes.Internal:
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		default:
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(user)

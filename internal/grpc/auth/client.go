@@ -101,7 +101,7 @@ func (c *GrpcClient) Logout(token string) error {
 }
 
 func (c *GrpcClient) GetUser(id int64) (*models.User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	response, err := c.userClient.GetUser(ctx, &userService.GetUserRequest{
