@@ -2,23 +2,17 @@ package api
 
 import (
 	"api-gateway/internal/handler"
-	"api-gateway/internal/services"
 	"context"
 	"log"
 	"net/http"
-	"strings"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type HttpServer struct {
-	Server *http.Server
+	Server      *http.Server
+	UserHandler *handler.UserHandler
 }
 
-func NewHttpServer() *HttpServer {
-	userService := services.NewUserService()
-	userHandler := handler.NewUserHandler(userService)
+func NewHttpServer(userHandler *handler.UserHandler) *HttpServer {
 
 	publicRouter := http.NewServeMux()
 	protectedRouter := http.NewServeMux()
@@ -34,7 +28,7 @@ func NewHttpServer() *HttpServer {
 
 	mainRouter := http.NewServeMux()
 	mainRouter.Handle("/auth/", publicRouter)
-	mainRouter.Handle("/api/", authMiddleware(protectedRouter))
+	mainRouter.Handle("/api/", userHandler.AuthMiddleware(protectedRouter))
 
 	return &HttpServer{
 		Server: &http.Server{
@@ -63,51 +57,4 @@ func (s *HttpServer) StopServer(ctx context.Context) {
 		return
 	}
 	log.Printf("Http server stopped\n")
-}
-
-func authMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tokenString := r.Header.Get("Authorization")
-		tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
-		if tokenString == "" {
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-			return
-		}
-
-		userService := services.NewUserService()
-		userId, err := userService.ValidateToken(tokenString)
-
-		if err != nil {
-			log.Printf("Error validating token: %v\n", err)
-
-			st, ok := status.FromError(err)
-
-			if !ok {
-				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusInternalServerError)
-				return
-			}
-
-			switch st.Code() {
-			case codes.InvalidArgument:
-				http.Error(w, st.Message(), http.StatusBadRequest)
-				return
-			case codes.Unauthenticated:
-				http.Error(w, st.Message(), http.StatusUnauthorized)
-				return
-			default:
-				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusInternalServerError)
-				return
-			}
-		}
-
-		if userId == 0 {
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-			return
-		}
-
-		ctx := context.WithValue(r.Context(), "user_id", userId)
-		r = r.WithContext(ctx)
-
-		next.ServeHTTP(w, r)
-	})
 }

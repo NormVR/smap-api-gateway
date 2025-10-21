@@ -3,12 +3,13 @@ package handler
 import (
 	"api-gateway/internal/models/auth"
 	"api-gateway/internal/services"
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -27,7 +28,7 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userData := auth.RegisterData{}
+	userData := auth.AuthData{}
 
 	err := json.NewDecoder(r.Body).Decode(&userData)
 
@@ -37,11 +38,6 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
-
-	/*_, err = mail.ParseAddress(userData.Email)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-	}*/
 
 	err = h.service.RegisterUser(&userData)
 
@@ -75,7 +71,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	loginData := auth.LoginData{}
+	loginData := auth.AuthData{}
 
 	err := json.NewDecoder(r.Body).Decode(&loginData)
 
@@ -148,14 +144,14 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := strconv.Atoi(parts[3])
+	id, err := uuid.Parse(parts[3])
 
 	if err != nil {
 		http.Error(w, "incorrect URL", http.StatusBadRequest)
 		return
 	}
 
-	user, err := h.service.GetUser(int64(id))
+	user, err := h.service.GetUser(id)
 
 	if err != nil {
 		log.Printf("failed to get user: %v", err)
@@ -179,4 +175,50 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(user)
+}
+
+func (h *UserHandler) AuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenString := r.Header.Get("Authorization")
+		tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
+		if tokenString == "" {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
+		userId, err := h.service.ValidateToken(tokenString)
+
+		if err != nil {
+			log.Printf("Error validating token: %v\n", err)
+
+			st, ok := status.FromError(err)
+
+			if !ok {
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusInternalServerError)
+				return
+			}
+
+			switch st.Code() {
+			case codes.InvalidArgument:
+				http.Error(w, st.Message(), http.StatusBadRequest)
+				return
+			case codes.Unauthenticated:
+				http.Error(w, st.Message(), http.StatusUnauthorized)
+				return
+			default:
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusInternalServerError)
+				return
+			}
+		}
+
+		if userId == uuid.Nil {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), "user_id", userId)
+		r = r.WithContext(ctx)
+
+		next.ServeHTTP(w, r)
+	})
 }

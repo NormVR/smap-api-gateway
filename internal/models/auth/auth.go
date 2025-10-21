@@ -1,14 +1,6 @@
 package auth
 
-type RegisterData struct {
-	Email     string `json:"email"`
-	Username  string `json:"username"`
-	Firstname string `json:"firstname"`
-	Lastname  string `json:"lastname"`
-	Password  string `json:"password"`
-}
-
-type LoginData struct {
+type AuthData struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }

@@ -1,10 +1,12 @@
 package redis
 
 import (
+	"api-gateway/internal/configs"
 	"context"
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -12,27 +14,32 @@ type RedisRepository struct {
 	client *redis.Client
 }
 
-func NewRedisRepository() *RedisRepository {
+func NewRedisRepository(integrationConfig *configs.IntegrationConfig) *RedisRepository {
 	return &RedisRepository{
 		client: redis.NewClient(&redis.Options{
-			Addr:     "redis:6379",
-			Password: "redispass",
+			Addr:     integrationConfig.RedisAddr,
+			Password: integrationConfig.RedisPassword,
 			DB:       0,
 		}),
 	}
 }
 
-func (s *RedisRepository) GetUserId(token string) (int64, error) {
+func (s *RedisRepository) GetUserId(token string) (uuid.UUID, error) {
 	ctx := context.Background()
-	userId, err := s.client.Get(ctx, token).Int64()
+	res := s.client.Get(ctx, token)
 
-	if err != nil {
-		if errors.Is(err, redis.Nil) {
-			return 0, nil
+	if res.Err() != nil {
+		if errors.Is(res.Err(), redis.Nil) {
+			return uuid.Nil, nil
 		} else {
-			return 0, fmt.Errorf("failed to load token data from redis: %w", err)
+			return uuid.Nil, fmt.Errorf("failed to load token data from redis: %w", res.Err())
 		}
 	}
 
-	return userId, nil
+	id, err := uuid.Parse(res.String())
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return id, nil
 }

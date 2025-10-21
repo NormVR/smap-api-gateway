@@ -6,6 +6,8 @@ import (
 	model "api-gateway/internal/models/auth"
 	"api-gateway/internal/repository/redis"
 	"log"
+
+	"github.com/google/uuid"
 )
 
 type UserService struct {
@@ -13,14 +15,14 @@ type UserService struct {
 	redisRepo  *redis.RedisRepository
 }
 
-func NewUserService() *UserService {
+func NewUserService(grpcClient *auth.GrpcClient, redisRepo *redis.RedisRepository) *UserService {
 	return &UserService{
-		grpcClient: auth.New(),
-		redisRepo:  redis.NewRedisRepository(),
+		grpcClient: grpcClient,
+		redisRepo:  redisRepo,
 	}
 }
 
-func (s *UserService) RegisterUser(userData *model.RegisterData) error {
+func (s *UserService) RegisterUser(userData *model.AuthData) error {
 	id, err := s.grpcClient.CreateUser(userData)
 	if err != nil {
 		return err
@@ -30,7 +32,7 @@ func (s *UserService) RegisterUser(userData *model.RegisterData) error {
 	return nil
 }
 
-func (s *UserService) LoginUser(loginData *model.LoginData) (map[string]string, error) {
+func (s *UserService) LoginUser(loginData *model.AuthData) (map[string]string, error) {
 	token, err := s.grpcClient.Login(loginData)
 
 	if err != nil {
@@ -54,28 +56,28 @@ func (s *UserService) Logout(tokenString string) error {
 	return nil
 }
 
-func (s *UserService) ValidateToken(token string) (int64, error) {
+func (s *UserService) ValidateToken(token string) (uuid.UUID, error) {
 	userId, err := s.redisRepo.GetUserId("token:" + token)
 
 	if err != nil {
 		log.Printf(err.Error())
 	}
 
-	if userId == 0 {
+	if userId == uuid.Nil {
 		userId, err = s.grpcClient.ValidateToken(token)
 		if err != nil {
-			return 0, err
+			return uuid.Nil, err
 		}
 
-		if userId == 0 {
-			return 0, nil
+		if userId == uuid.Nil {
+			return uuid.Nil, nil
 		}
 	}
 
 	return userId, nil
 }
 
-func (s *UserService) GetUser(userId int64) (*userModel.User, error) {
+func (s *UserService) GetUser(userId uuid.UUID) (*userModel.User, error) {
 	user, err := s.grpcClient.GetUser(userId)
 
 	if err != nil {
