@@ -43,6 +43,7 @@ func (c *GrpcClient) CreateUser(data *auth.AuthData) (uuid.UUID, error) {
 
 	user, err := c.authClient.CreateUser(ctx, &authService.CreateUserRequest{
 		Email:    data.Email,
+		Username: data.Username,
 		Password: data.Password,
 	})
 
